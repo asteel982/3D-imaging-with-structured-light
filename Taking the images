@@ -1,0 +1,60 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+import tkinter as tk
+from PIL import Image, ImageTk
+import time
+from mpl_toolkits.mplot3d import Axes3D
+#%%
+#This part of the code generates and then projects the fringe patterns onto the scene and then simultaneously records and saves the images taken of the three fringe patterns to be analysed later to generate the images
+
+cam = cv2.VideoCapture(0)
+#This first part generates the fringe patterns using a known sinusoidal pattern
+def sinewave(resX,resY,period,phase):
+    x = np.arange(0, resX)
+  
+    ons  = np.ones([resY,1])
+    x_2 = np.matmul(ons,[x])
+
+    angfreq = 2*np.pi/period
+    y  = np.cos(angfreq*x_2 + phase)
+    return y
+
+
+#Here the variables are chosen but can be altered for different, frequencies, resolutions and phase steps
+phase = [0, 2*np.pi/3, 4*np.pi/3]
+period = 50 #Sinewave period
+resX = 1920 #Size in x direction
+resY = 1080 #Size in y direction
+
+
+#This creates the canvas for the generated images to be projected on
+
+root = tk.Tk()
+
+root.geometry("1920x1080+1910+0") 
+
+canvas = tk.Canvas(root,width=1920,height=1080) #This ensures that the images are displayed on the second screen which in this system is the projector
+canvas.pack()
+
+frame = {}
+
+#This then projects the fringe patterns one after the other while taking and saving an image of the scene
+for a,phs in enumerate(phase):
+    array = sinewave(resX, resY,period,phs)
+    array = array*128 + 127 #Must scale between -1 to 1 and 0 to 255 
+    
+    img =  ImageTk.PhotoImage(Image.fromarray(array))
+    canvas.create_image(0, 0, anchor="nw", image=img)
+    
+    root.update() # Show plot
+    
+    time.sleep(1.0)    # Pause 
+    ret,frameOut = cam.read() #taking the image
+    frame[a] = np.sum(frameOut,axis=2)/(3*255)
+    image = Image.fromarray(frameOut)
+    disp_image = image.resize((160,120)) #resizing the image for faster processing later on
+    filename = r'c:\Users\user\Desktop\Frame_tests\radiator\Frame_'+str(a)+'.png' #this saves the image so change the location to whatever desired folder
+    disp_image.save(filename)
+root.destroy()
